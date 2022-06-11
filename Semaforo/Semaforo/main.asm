@@ -6,12 +6,13 @@
 ;
 
 .def temp = r16
-.def leds = r17 ;valor atual dos LED
-.def count = r19 ;contador de 1 segundo
-.def index = r20 ;condador de estado
-.def current_delay = r8
-.def part1 = r9
-.def part2 = r10
+.def leds = r17			;valor atual dos LED
+.def index = r20		;contador de estado
+.def count = r19		;contador do tempo no estado atual
+.def count_global = r23	; contador do tempo desde o inicio do ciclo
+.def current_delay = r8	;tempo no estado atual
+.def part1 = r9			; semaforo 1 e 2
+.def part2 = r10		; semaforo 3 e 4
 .def zero = r22
 .equ num_state = 7
 
@@ -28,21 +29,22 @@ delays:
 	.db 3, 3, 3, 3, 3, 3, 3, 3; tempos dos estados
 
 state:
-		 ;111222----333444
-	.dw 0b1001000011111111; estado 1
-	.dw 0b1000010011111111; estado 2
-	.dw 0b1000100011111111; estado 3
-	.dw 0b1001000011111111; estado 4
-	.dw 0b1001000011111111; estado 5
-	.dw 0b0011000011111111; estado 6
-	.dw 0b0101000011111111; estado 7
+		;R1:1 Y1:0 G1:0 R2:1 Y2:0 G2: 0 ---- R3:1 Y3:0 G3:0 R4:1 Y4:0 G4: 0 
+	.dw 0b1001000011100100; estado 1
+	.dw 0b1000010011001100; estado 2
+	.dw 0b1000100011001100; estado 3
+	.dw 0b1001000011001001; estado 4
+	.dw 0b1001000011010010; estado 5
+	.dw 0b0011000011100100; estado 6
+	.dw 0b0101000011100100; estado 7
 
 OCI1A_Interrupt:
 	push r16
 	in r16, SREG
 	push r16
 	
-	inc count
+	inc count			;adiciona 1 seg a contagem do estado atual
+	inc count_global	;adiciona 1 seg a contagem desde o inicio do ciclo
 	
 	pop r16
 	out SREG, r16
@@ -57,7 +59,7 @@ reset:
 	ldi temp, high(RAMEND)
 	out SPH, temp
 
-	;configurando delay
+	;configurando delay do primeiro estado
 	ldi ZL, low(delays << 1)
 	ldi ZH, high(delays << 1)
 	lpm current_delay, Z
@@ -67,17 +69,17 @@ reset:
 	lpm part1, Z+
 	lpm part2, Z
 
-	;leds display alternating pattern
+	;habilitando porta de saída dos semáforos 1 e 2
 	ldi temp, 0b11111100
 	out DDRD, temp
-	out PORTD, part2 ;alternating pattern
-	;leds display alternating pattern
+	out PORTD, part2 ;
+	;habilitando porta de saída dos semáforos 3 e 4
 	ldi temp, 0b00111111
 	out DDRB, temp
-	out PORTB, part1 ;alternating pattern
+	out PORTB, part1 ;
 
 	#define CLOCK 16.0e6 ;clock speed
-	#define DELAY 1;0.001 ;seconds
+	#define DELAY 0.001 ;seconds
 	.equ PRESCALE = 0b100 ;/256 prescale
 	.equ PRESCALE_DIV = 256
 	.equ WGM = 0b0100 ;Waveform generation mode: CTC
@@ -110,24 +112,27 @@ reset:
 	sei
 
 main_lp:
-	cp current_delay, count
-	breq change_state
-	rjmp main_lp
+	cp current_delay, count; compara tempo do estado com tempo atual
+	breq change_state ;
+	rjmp main_lp; continua no estado
 change_state:
-	ldi count, 0
-	inc index
+	ldi count, 0		; reiniciar o temporizador do estado
+	inc index			;avança ao estado seguinte
 	cpi index, num_state;compara se chegou ao fim
-	brne progress
-	ldi index, 0
+	brne progress		;
+	ldi index, 0;		;volta ao estado inicial
+	ldi count_global, 0	;zera contagem de tempo
 progress:
 	;configurando delay
 	ldi ZL, low(delays << 1)
 	ldi ZH, high(delays << 1)
-	ldi zero, 0
-	add ZL, index
+	ldi zero, 0	
+	;Cálculo da posição na memória	
+	add ZL, index	
 	adc ZH, zero
-	lpm current_delay, Z
-	;configurando estado inicial
+	lpm current_delay, Z	;atualiza o temporizador
+	;configurando estado atual
+	;Cálculo da posição na memória	
 	ldi ZL, low(state << 1)
 	ldi ZH, high(state << 1)
 	mov r0, index
@@ -136,6 +141,7 @@ progress:
 	adc ZH, zero
 	lpm part1, Z+
 	lpm part2, Z
+	;atualização dos leds
 	out PORTD, part2
 	out PORTB, part1
 	rjmp main_lp
