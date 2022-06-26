@@ -95,6 +95,7 @@ reset:
 	ldi alternador, $00
 	ldi dig1, $00
 	ldi dig2, $00
+	ldi index, 0
 
 	;habilitando porta de saída dos semáforos 1 e 2
 	ldi temp, 0b11111100
@@ -147,10 +148,12 @@ reset:
 
 	;you must ensure this value is between 0 and 255
 	#define DELAY_2 0.001 ;seconds
-	.equ PRESCALE2 = 0b011 ;/64 prescale
-	.equ PRESCALE_DIV2 = 64
-	.equ TOP2 = int(0.5 + ((CLOCK/PRESCALE_DIV2)*DELAY_2));250
-	.if TOP2 > 256
+	/*.equ PRESCALE2 = 0b011 ;/64 prescale
+	.equ PRESCALE_DIV2 = 64*/
+	.equ PRESCALE2 = 0b100 ;/256 prescale
+	.equ PRESCALE_DIV2 = 256
+	.equ TOP2 = int(0.5 + ((CLOCK/PRESCALE_DIV2)*DELAY_2));63
+	.if TOP2 > 255
 	.error "TOP2 is out of range"
 	.endif
 
@@ -194,10 +197,13 @@ compara:
 change_state:
 	ldi count, 0		; reiniciar o temporizador do estado
 	inc index			;avança ao estado seguinte
+	ldi dig1, $00	;excluir
+	ldi dig2, $00	;excluir
 	cpi index, num_state;compara se chegou ao fim
 	brne progress		;
 	ldi index, 0;		;volta ao estado inicial
 	ldi count_global, 0	;zera contagem de tempo
+	
 progress:
 	;configurando delay
 	ldi ZL, low(delays << 1)
