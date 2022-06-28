@@ -25,8 +25,8 @@ jmp OCI0B_Interrupt
 
 .dw $cdab
 delays:
-	.db 21, 20, 4, 51, 4, 20, 4; tempos dos estados
-	;.db 3, 3, 3, 3, 3, 3, 3, 3; tempos dos estados
+	;.db 21, 20, 4, 51, 4, 20, 4; tempos dos estados
+	.db 3, 3, 3, 3, 3, 3, 3, 3; tempos dos estados
 
 state:
 		;R1:1 Y1:0 G1:0 R2:1 Y2:0 G2: 0 ---- R3:1 Y3:0 G3:0 R4:1 Y4:0 G4: 0 
@@ -75,6 +75,7 @@ OCI0B_Interrupt:
 	reti
 
 reset:
+	CLI		;Clear Global Interrupt Enable Bit
 	;Stack initialization
 	ldi temp, low(RAMEND)
 	out SPL, temp
@@ -90,12 +91,6 @@ reset:
 	ldi ZH, high(state << 1)
 	lpm part1, Z+
 	lpm part2, Z
-	
-	;configurando alternador
-	ldi alternador, $00
-	ldi dig1, $00
-	ldi dig2, $00
-	ldi index, 0
 
 	;habilitando porta de saída dos semáforos 1 e 2
 	ldi temp, 0b11111100
@@ -107,7 +102,7 @@ reset:
 	out PORTB, part1
 
 	;habilitando porta de saída do bcd
-	ldi temp, 0b00111111
+	ldi temp, 0b00111111	;00 - dig2, dig1 - valor
 	out DDRC, temp
 	out PORTC, zero
 
@@ -176,6 +171,14 @@ reset:
 	sbr r16, 1 << OCF0A
 	out TIFR0, r16
 
+	;configurando registradores
+	ldi alternador, $00
+	ldi dig1, $00
+	ldi dig2, $00
+	ldi index, $00
+	ldi count, $00
+	ldi count_global, $00
+
 	sei
 
 main_lp:
@@ -186,7 +189,7 @@ main_lp:
 	out PORTC, temp
 	jmp compara
 aciona_dig2:
-	mov temp, dig2
+	mov temp, dig2;index
 	sbr temp, 1 << 5
 	out PORTC, temp
 
