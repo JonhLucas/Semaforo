@@ -1,6 +1,14 @@
 # Semaforo
-Projeto de micro controladores
+Projeto de microcontroladores
+
+
 Nomes: 
-       Jonh Lucas, João Paulo e Antônio Alef
+
+
+       Jonh Lucas Alves da Silva
+       
+       João Paulo Agostinho da Silva
+       
+       Antônio Alef Oliveira Farias
        
 Periodo: 2021.2
